@@ -4,10 +4,10 @@ const brevo = require("@getbrevo/brevo");
 // Config
 require("dotenv").config();
 
-// Initialize Brevo Client cleanly using the proper modern constructor export
+// Extract constructors explicitly from the modern structured package
 const apiInstance = new brevo.TransactionalEmailsApi();
 
-// Pass your API key directly into the configuration instance
+// Pass your API key into the configurations
 apiInstance.setApiKey(
   brevo.TransactionalEmailsApiApiKeys.apiKey, 
   process.env.BREVO_API_KEY
@@ -25,13 +25,13 @@ exports.sendMail = async function (options) {
     sendSmtpEmail.htmlContent = options.html || `<p>${options.text}</p>`;
     sendSmtpEmail.textContent = options.text;
     
-    // Sender info: Sets the display name and your registered email address securely
+    // Sender info from environment variables
     sendSmtpEmail.sender = { 
-      name: "Osak-Gram", 
+      name: "Social App", 
       email: process.env.MAIL_USER 
     };
     
-    // Recipient info
+    // Recipient info structured as an array of objects
     sendSmtpEmail.to = [{ email: options.to }];
 
     // Send request via API
