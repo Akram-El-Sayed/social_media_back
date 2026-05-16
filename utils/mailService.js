@@ -1,42 +1,38 @@
 // Req Module
-const nodemailer = require("nodemailer");
+const brevo = require("@getbrevo/brevo");
 
 // Config
 require("dotenv").config();
 
-// Transporter
-const transporter = nodemailer.createTransport({
-  host: process.env.MAIL_HOST,
-  port: Number(process.env.MAIL_PORT),
-  secure: false,
-  auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS,
-  },
-});
-
-// transporter.verify(function (error, success) {
-//   if (error) {
-//     console.log("Transporter verify error:", error);
-//   } else {
-//     console.log("Mail server is ready:", success);
-//   }
-// });
+// Initialize Brevo Client
+const apiInstance = new brevo.TransactionalEmailsApi();
+apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
 
 /**
- * 
- * @param {*} options 
- * options: {
-     to, 
-     subject,
-     html,
-     text
- }
+ * Sends a transactional email using Brevo API over HTTPS
+ * @param {Object} options - { to, subject, html, text }
  */
 exports.sendMail = async function (options) {
   try {
-    await transporter.sendMail({ from: process.env.MAIL_USER, ...options });
+    const sendSmtpEmail = new brevo.SendSmtpEmail();
+
+    sendSmtpEmail.subject = options.subject;
+    sendSmtpEmail.htmlContent = options.html || `<p>${options.text}</p>`;
+    sendSmtpEmail.textContent = options.text;
+    
+    // Sender info: Use your name and the Gmail address you registered on Brevo with
+    sendSmtpEmail.sender = { 
+      name: "Osak-Gram",
+      email: process.env.MAIL_USER 
+    };
+    
+    // Recipient info
+    sendSmtpEmail.to = [{ email: options.to }];
+
+    // Send request via API
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    // console.log("📧 Email sent successfully via Brevo!", data);
   } catch (error) {
-    console.log(`[DEBUG] - SENDER SERVICE ERROR: ${error}`);
+    console.log(`[DEBUG] - SENDER SERVICE ERROR: ${error.message || error}`);
   }
 };
