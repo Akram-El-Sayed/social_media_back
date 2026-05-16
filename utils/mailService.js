@@ -23,7 +23,7 @@ exports.sendMail = async function (options) {
       
       // Sender info: Make sure process.env.MAIL_USER is your Brevo login email
       sender: { 
-        name: "Social App", 
+        name: "Osak-Gram", 
         email: process.env.MAIL_USER 
       },
       
