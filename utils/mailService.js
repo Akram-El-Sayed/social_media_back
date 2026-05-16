@@ -4,9 +4,14 @@ const brevo = require("@getbrevo/brevo");
 // Config
 require("dotenv").config();
 
-// Initialize Brevo Client
+// Initialize Brevo Client cleanly using the proper modern constructor export
 const apiInstance = new brevo.TransactionalEmailsApi();
-apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
+
+// Pass your API key directly into the configuration instance
+apiInstance.setApiKey(
+  brevo.TransactionalEmailsApiApiKeys.apiKey, 
+  process.env.BREVO_API_KEY
+);
 
 /**
  * Sends a transactional email using Brevo API over HTTPS
@@ -20,9 +25,9 @@ exports.sendMail = async function (options) {
     sendSmtpEmail.htmlContent = options.html || `<p>${options.text}</p>`;
     sendSmtpEmail.textContent = options.text;
     
-    // Sender info: Use your name and the Gmail address you registered on Brevo with
+    // Sender info: Sets the display name and your registered email address securely
     sendSmtpEmail.sender = { 
-      name: "Osak-Gram",
+      name: "Osak-Gram", 
       email: process.env.MAIL_USER 
     };
     
@@ -30,8 +35,8 @@ exports.sendMail = async function (options) {
     sendSmtpEmail.to = [{ email: options.to }];
 
     // Send request via API
-    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    // console.log("📧 Email sent successfully via Brevo!", data);
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    // console.log("📧 Email sent successfully via Brevo!");
   } catch (error) {
     console.log(`[DEBUG] - SENDER SERVICE ERROR: ${error.message || error}`);
   }
