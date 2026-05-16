@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
-require('dotenv').config();
 const cookieParser = require('cookie-parser');
 const { isDynamicOrigin } = require('./utils/corsOrigin');
 
