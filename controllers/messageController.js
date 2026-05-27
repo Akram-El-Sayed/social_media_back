@@ -77,21 +77,6 @@ exports.sendMessage = async (req, res) => {
       updatedAt: new Date(),
     });
 
-    // Notification
-    const notification = await Notification.create({
-      recipient: receiverId,
-      sender: senderId,
-      type: "message",
-      data: {
-        conversationId: conversation._id,
-        messageId: message._id,
-      },
-    });
-
-    const populatedNotif = await notification.populate(
-      "sender",
-      "username profilePicture",
-    );
 
     const updatedReceiver = await User.findByIdAndUpdate(
       receiverId,
@@ -112,12 +97,8 @@ exports.sendMessage = async (req, res) => {
 
     
     io.to(receiverId.toString()).emit("message:new", populatedMessage);
-
-    // Notification bell
-    io.to(receiverId.toString()).emit("notification:new", populatedNotif);
-    io.to(receiverId.toString()).emit("notification_badge_updated", {
-      unreadCount: updatedReceiver.unreadNotificationsCount,
-    });
+    io.to(senderId.toString()).emit("message:new", populatedMessage);
+    
 
     res.status(201).json(populatedMessage);
   } catch (error) {
@@ -292,9 +273,8 @@ exports.searchConversations = async (req, res) => {
       _id: { $ne: userId },
       $or: [
         { username: { $regex: search.trim(), $options: "i" } },
-        { fullName: { $regex: search.trim(), $options: "i" } },
       ],
-    }).select("_id username fullName profilePicture");
+    }).select("_id username  profilePicture");
 
     const matchingUserIds = matchingUsers.map((u) => u._id);
 
@@ -303,7 +283,7 @@ exports.searchConversations = async (req, res) => {
       participants: { $all: [userId], $in: matchingUserIds },
     })
       .sort({ updatedAt: -1 })
-      .populate("participants", "username fullName profilePicture")
+      .populate("participants", "username  profilePicture")
       .populate({
         path: "lastMessage",
         populate: { path: "sender", select: "username profilePicture" },
