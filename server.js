@@ -1,4 +1,3 @@
-require('dotenv').config();
 const http = require("http");
 const app = require("./app");
 const { Server } = require("socket.io");
@@ -40,16 +39,18 @@ app.set("io", io);
 
 // SOCKET AUTH MIDDLEWARE
 io.use(async (socket, next) => {
-  console.log("🍪 Socket cookies:", socket.handshake.headers.cookie);
   try {
-    const cookieHeader = socket.handshake.headers.cookie;
-
-    const token = cookieHeader
+    let token = socket.handshake.headers.cookie
       ?.split("; ")
       .find((c) => c.startsWith("token="))
       ?.split("=")
       .slice(1)
-      .join("="); // preserves = in JWT value
+      .join("=");
+
+    // Fall back to socket auth (for Safari/iOS)
+    if (!token) {
+      token = socket.handshake.auth?.token;
+    }
 
     if (!token) return next(new Error("No token"));
 
