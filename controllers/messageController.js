@@ -77,12 +77,16 @@ exports.sendMessage = async (req, res) => {
       updatedAt: new Date(),
     });
 
-
     const updatedReceiver = await User.findByIdAndUpdate(
       receiverId,
-      { $inc: { unreadNotificationsCount: 1 } },
+      { $inc: { unreadMessagesCount: 1 } },
       { new: true },
-    ).select("unreadNotificationsCount");
+    ).select("unreadMessagesCount");
+
+    // emit to the messages badge, not the general one
+    io.to(receiverId.toString()).emit("messages_badge_updated", {
+      unreadMessagesCount: updatedReceiver.unreadMessagesCount,
+    });
 
     const populatedMessage = await message.populate(
       "sender",
@@ -95,10 +99,8 @@ exports.sendMessage = async (req, res) => {
       populatedMessage,
     );
 
-    
     io.to(receiverId.toString()).emit("message:new", populatedMessage);
     io.to(senderId.toString()).emit("message:new", populatedMessage);
-    
 
     res.status(201).json(populatedMessage);
   } catch (error) {
@@ -106,8 +108,6 @@ exports.sendMessage = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
-
 
 // MARK MESSAGES AS SEEN
 exports.markMessagesAsSeen = async (req, res) => {
@@ -117,13 +117,13 @@ exports.markMessagesAsSeen = async (req, res) => {
     const userId = req.user._id;
 
     // Update Messages to 'seen' status
-    await Message.updateMany(
+    const seenResult = await Message.updateMany(
       { conversation: conversationId, receiver: userId, read: false },
       { read: true, status: "seen" },
     );
+    const seenCount = seenResult.modifiedCount;
 
     // Reset Unread Count in Conversation Map
-    // This uses MongoDB dot notation to target the specific user key in the Map
     await Conversation.findByIdAndUpdate(conversationId, {
       $set: { [`unread.${userId.toString()}`]: 0 },
     });
@@ -145,8 +145,18 @@ exports.markMessagesAsSeen = async (req, res) => {
       seenBy: userId,
     });
 
-    // Update the receiver's global notification badge
-    io.to(userId.toString()).emit("notification_badge_updated");
+    // Update the receiver's messages badge (only if something actually changed)
+    if (seenCount > 0) {
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $inc: { unreadMessagesCount: -seenCount } },
+        { new: true },
+      ).select("unreadMessagesCount");
+
+      io.to(userId.toString()).emit("messages_badge_updated", {
+        unreadMessagesCount: updatedUser.unreadMessagesCount,
+      });
+    }
 
     res.json({ message: "Chat marked as seen" });
   } catch (error) {
@@ -271,9 +281,7 @@ exports.searchConversations = async (req, res) => {
     // Find users matching the search term
     const matchingUsers = await User.find({
       _id: { $ne: userId },
-      $or: [
-        { username: { $regex: search.trim(), $options: "i" } },
-      ],
+      $or: [{ username: { $regex: search.trim(), $options: "i" } }],
     }).select("_id username  profilePicture");
 
     const matchingUserIds = matchingUsers.map((u) => u._id);
@@ -369,7 +377,7 @@ exports.deleteMessage = async (req, res) => {
         .json({ message: "Not allowed to delete this message" });
     }
 
-    // Soft delete 
+    // Soft delete
     message.text = "This message was deleted";
     message.deleted = true;
     await message.save();
@@ -451,7 +459,7 @@ exports.editMessage = async (req, res) => {
       "username profilePicture",
     );
 
-    // Real-time update 
+    // Real-time update
     io.to(`conversation:${message.conversation}`).emit("message:edited", {
       _id: message._id,
       text: message.text,
@@ -535,7 +543,6 @@ exports.reactToMessage = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
 
 exports.getReactionUsers = async (req, res) => {
   try {
@@ -700,7 +707,6 @@ exports.sharePost = async (req, res) => {
       populatedMessage,
     );
 
-    
     io.to(receiverId.toString()).emit("message:new", populatedMessage);
 
     // Post stat updates
@@ -730,4 +736,3 @@ exports.sharePost = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
