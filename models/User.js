@@ -28,6 +28,8 @@ const userSchema = new mongoose.Schema(
 
     unreadNotificationsCount: { type: Number, default: 0 },
 
+    unreadMessagesCount: { type: Number, default: 0 },
+
     accountStatus: {
       type: String,
       enum: ["Pending", "Active", "Suspended", "Deleted"],
